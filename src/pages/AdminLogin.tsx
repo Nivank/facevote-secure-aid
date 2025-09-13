@@ -20,28 +20,28 @@ const AdminLogin = () => {
     setLoading(true);
     
     try {
-      // For demo purposes, we'll use simple authentication
-      // In production, implement proper password hashing and JWT tokens
-      if ((adminId === 'admin1' || adminId === 'admin2') && password === 'password') {
+      // Use secure authentication function instead of direct table access
+      const { data: adminUsers, error: authError } = await supabase
+        .rpc('authenticate_admin', {
+          input_admin_id: adminId,
+          input_password: password
+        });
+
+      if (authError) throw authError;
+
+      if (adminUsers && adminUsers.length > 0) {
+        const adminUser = adminUsers[0];
+        
         // Create session token
-        const sessionToken = btoa(`${adminId}:${Date.now()}`);
+        const sessionToken = btoa(`${adminUser.admin_id}:${Date.now()}`);
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour session
-
-        // Get admin user
-        const { data: adminUser, error } = await supabase
-          .from('admin_users')
-          .select('*')
-          .eq('admin_id', adminId)
-          .single();
-
-        if (error) throw error;
 
         // Store session
         const { error: sessionError } = await supabase
           .from('admin_sessions')
           .insert({
-            admin_id: adminUser.id,
+            admin_id: adminUser.admin_uuid,
             token: sessionToken,
             expires_at: expiresAt.toISOString()
           });
